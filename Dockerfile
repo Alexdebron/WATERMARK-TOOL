@@ -1,21 +1,14 @@
-# Base image
-FROM node:20-alpine
+# Lightweight web server image
+FROM nginx:alpine
 
-# Set working directory
-WORKDIR /app
+# Remove default nginx static files
+RUN rm -rf /usr/share/nginx/html/*
 
-# Copy package files (if there are any, but this project is HTML only)
-# COPY package.json ./
-# RUN npm install
+# Copy your HTML, CSS, JS into nginx web root
+COPY . /usr/share/nginx/html
 
-# Copy the project contents
-COPY . .
+# Expose port 80
+EXPOSE 80
 
-# If server needed, install a static server, e.g. serve
-RUN npm install -g serve
-
-# Expose port (serve uses 5000 by default, or any port you choose)
-EXPOSE 5000
-
-# Command to run the application
-CMD ["serve", "-s", ".", "-l", "5000"]
+# Nginx auto-start
+CMD ["nginx", "-g", "daemon off;"]
