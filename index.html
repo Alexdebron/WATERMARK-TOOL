@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Watermark Tool</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  body { background:linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color:#333; min-height:100vh; padding:20px; }
+  .container { max-width:1200px; margin:0 auto; }
+  header { text-align:center; margin-bottom:30px; color:white; }
+  h1 { font-size:2.5rem; margin-bottom:10px; text-shadow:2px 2px 4px rgba(0,0,0,0.3); }
+  .app-container { display:center; flex-wrap:wrap; gap:20px; background:white; border-radius:15px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.2); }
+  .controls { flex:1; min-width:300px; padding:25px; background:#f9f9f9; }
+  .preview { flex:2; min-width:400px; padding:25px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#eee; }
+  .section { margin-bottom:25px; }
+  h2 { font-size:1.4rem; margin-bottom:15px; color:#2575fc; border-bottom:2px solid #ddd; padding-bottom:8px; }
+  .upload-btn { display:inline-block; padding:12px 20px; background:#2575fc; color:white; border-radius:5px; cursor:pointer; transition:background 0.3s; margin-bottom:10px; text-align:center; width:100%; }
+  .upload-btn:hover { background:#1a67e8; }
+  .upload-btn i { margin-right:8px; }
+  input[type="file"] { display:none; }
+  select,input { width:100%; padding:12px; margin-bottom:15px; border:1px solid #ddd; border-radius:5px; font-size:1rem; }
+  .color-picker { display:; flex-wrap:wrap; gap:10px; margin-bottom:15px; }
+  .color-option { width:35px; height:35px; border-radius:5px; cursor:pointer; border:2px solid transparent; transition:transform 0.2s; }
+  .color-option:hover { transform:scale(1.1); }
+  .color-option.active { border-color:#2575fc; transform:scale(1.1); }
+  .position-selector { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:15px; }
+  .position-btn { padding:12px; background:#f1f1f1; border:1px solid #ddd; border-radius:5px; text-align:center; cursor:pointer; transition:all 0.2s; }
+  .position-btn:hover { background:#e9e9e9; }
+  .position-btn.active { background:#2575fc; color:white; border-color:#2575fc; }
+  .action-btn { display:block; width:100%; padding:15px; background:#6a11cb; color:white; border:none; border-radius:5px; font-size:1.1rem; cursor:pointer; transition:background 0.3s; margin-top:200px; }
+  .action-btn:hover { background:#5a0fb8; }
+  .preview-container { width:100%; max-width:1000px; height:500px; border:20px dashed #ccc; border-radius:100px; display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:100px; background:white; position:relative; }
+  canvas { max-width:100%; max-height:100%; }
+  .placeholder-text { color:#999; text-align:center; padding:20px; }
+  .footer { text-align:Right; margin-top:300px; color:white; }
+  .social-link { display:inline-block; margin-top:15px; padding:120px 205px; background:#25D366; color:white; text-decoration:none; border-radius:50px; font-weight:bold; transition:background 0.3s; }
+  .social-link:hover { background:#20bd5c; }
+  .social-link i { margin-right:80px; }
+  .brand { margin-top:200px; font-weight:bold; color:rgba(255,255,255,0.8); }
+  @media(max-width:768px){ .app-container{flex-direction:column;} .preview,.controls{min-width:100%;} }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Image Watermark Tool</h1>
+    <p>Easily add custom watermarks to your images</p>
+  </header>
+
+  <div class="app-container">
+    <div class="controls">
+      <div class="section">
+        <h2>Upload Files</h2>
+        <label class="upload-btn">
+          <i class="fas fa-font"></i> Upload Font / ZIP
+          <input type="file" id="fontUpload" accept=".ttf,.otf,.woff,.woff2,.zip">
+        </label>
+        <label class="upload-btn">
+          <i class="fas fa-image"></i> Upload Image
+          <input type="file" id="imageUpload" accept="image/*">
+        </label>
+      </div>
+
+      <div class="section">
+        <h2>Watermark Settings</h2>
+        <input type="text" id="watermarkText" placeholder="Enter watermark text" value="SAMPLE WATERMARK">
+
+        <h3>Select Font</h3>
+        <select id="fontSelect">
+          <option value="Arial">Arial</option>
+          <option value="Verdana">Verdana</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Courier New">Courier New</option>
+        </select>
+
+        <h3>Font Size</h3>
+        <input type="range" id="fontSize" min="10" max="200" value="40">
+
+        <h3>Font Opacity</h3>
+        <input type="range" id="fontOpacity" min="0" max="1" step="0.01" value="0.7">
+
+        <h3>Select Color</h3>
+        <div class="color-picker" id="colorPicker">
+          <div class="color-option active" style="background-color:#FFFFFF;" data-color="#FFFFFF"></div>
+          <div class="color-option" style="background-color:#000000;" data-color="#000000"></div>
+          <div class="color-option" style="background-color:#FF0000;" data-color="#FF0000"></div>
+          <div class="color-option" style="background-color:#00FF00;" data-color="#00FF00"></div>
+          <div class="color-option" style="background-color:#0000FF;" data-color="#0000FF"></div>
+          <div class="color-option" style="background-color:#FFFF00;" data-color="#FFFF00"></div>
+          <div class="color-option" style="background-color:#FF00FF;" data-color="#FF00FF"></div>
+          <div class="color-option" style="background-color:#00FFFF;" data-color="#00FFFF"></div>
+          <div class="color-option" style="background-color:#FFA500;" data-color="#FFA500"></div>
+          <div class="color-option" style="background-color:#800080;" data-color="#800080"></div>
+          <div class="color-option" style="background-color:#808080;" data-color="#808080"></div>
+          <div class="color-option" style="background-color:#2E2E2E;" data-color="#2E2E2E"></div>
+        </div>
+
+        <h3>Select Position</h3>
+        <div class="position-selector">
+          <div class="position-btn" data-position="top-left">Top Left</div>
+          <div class="position-btn" data-position="top">Top</div>
+          <div class="position-btn" data-position="top-right">Top Right</div>
+          <div class="position-btn" data-position="left">Left</div>
+          <div class="position-btn active" data-position="center">Center</div>
+          <div class="position-btn" data-position="right">Right</div>
+          <div class="position-btn" data-position="bottom-left">Bottom Left</div>
+          <div class="position-btn" data-position="bottom">Bottom</div>
+          <div class="position-btn" data-position="bottom-right">Bottom Right</div>
+        </div>
+      </div>
+
+      <button class="action-btn" id="applyWatermark"><i class="fas fa-tint"></i> Apply Watermark</button>
+      <button class="action-btn" id="downloadImage" disabled><i class="fas fa-download"></i> Download Image</button>
+    </div>
+
+    <div class="preview">
+      <h2>Image Preview</h2>
+      <div class="preview-container">
+        <canvas id="previewCanvas"></canvas>
+        <div id="center" class="placeholder-text">
+          <i class=""></i>
+          <p></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://whatsapp.com/channel/0029Vak4dFAHQbSBzyxlGG13" class="social-link" target="_blank">
+      <i class="fab fa-whatsapp"></i> Follow on WhatsApp
+    </a>
+    <div class="brand">POWERED BY WHITESHADOW</div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const fontUpload = document.getElementById('fontUpload');
+  const imageUpload = document.getElementById('imageUpload');
+  const fontSelect = document.getElementById('fontSelect');
+  const watermarkText = document.getElementById('watermarkText');
+  const fontSizeInput = document.getElementById('fontSize');
+  const fontOpacityInput = document.getElementById('fontOpacity');
+  const colorOptions = document.querySelectorAll('.color-option');
+  const positionButtons = document.querySelectorAll('.position-btn');
+  const applyButton = document.getElementById('applyWatermark');
+  const downloadButton = document.getElementById('downloadImage');
+  const previewCanvas = document.getElementById('previewCanvas');
+  const ctx = previewCanvas.getContext('2d');
+  const placeholder = document.getElementById('placeholder');
+
+  let selectedColor = '#FFFFFF';
+  let selectedPosition = 'center';
+  let uploadedImage = null;
+
+  colorOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      colorOptions.forEach(opt => opt.classList.remove('active'));
+      option.classList.add('active');
+      selectedColor = option.dataset.color;
+      drawWatermark();
+    });
+  });
+
+  positionButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      positionButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedPosition = btn.dataset.position;
+      drawWatermark();
+    });
+  });
+
+  imageUpload.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      uploadedImage = new Image();
+      uploadedImage.onload = () => {
+        previewCanvas.width = uploadedImage.width;
+        previewCanvas.height = uploadedImage.height;
+        placeholder.style.display = 'none';
+        drawWatermark();
+        downloadButton.disabled = false;
+      };
+      uploadedImage.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  fontUpload.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const loadFont = async (name, blob) => {
+      const url = URL.createObjectURL(blob);
+      const font = new FontFace(name, `url(${url})`);
+      await font.load();
+      document.fonts.add(font);
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      fontSelect.appendChild(opt);
+      fontSelect.value = name;
+      drawWatermark();
+    };
+
+    if (file.name.endsWith('.zip')) {
+      const zip = await JSZip.loadAsync(file);
+      for (const entryName in zip.files) {
+        const zipEntry = zip.files[entryName];
+        if (!zipEntry.dir && /\.(ttf|otf|woff2?)$/i.test(zipEntry.name)) {
+          const blob = await zipEntry.async('blob');
+          const fontName = zipEntry.name.replace(/\.[^/.]+$/, '');
+          await loadFont(fontName, blob);
+        }
+      }
+    } else {
+      await loadFont(file.name.replace(/\.[^/.]+$/, ''), file);
+    }
+  });
+
+  applyButton.addEventListener('click', drawWatermark);
+  fontSizeInput.addEventListener('input', drawWatermark);
+  fontSelect.addEventListener('change', drawWatermark);
+  fontOpacityInput.addEventListener('input', drawWatermark);
+
+  function drawWatermark() {
+    if (!uploadedImage) return;
+    ctx.clearRect(0,0,previewCanvas.width,previewCanvas.height);
+    ctx.drawImage(uploadedImage,0,0,previewCanvas.width,previewCanvas.height);
+    const fontSize = parseInt(fontSizeInput.value);
+    ctx.font = `bold ${fontSize}px '${fontSelect.value}'`;
+    ctx.fillStyle = selectedColor;
+    ctx.globalAlpha = parseFloat(fontOpacityInput.value);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    let x=previewCanvas.width/2, y=previewCanvas.height/2;
+    const margin=20;
+    switch(selectedPosition){
+      case 'top-left': ctx.textAlign='left';ctx.textBaseline='top';x=margin;y=margin;break;
+      case 'top': ctx.textBaseline='top';x=previewCanvas.width/2;y=margin;break;
+      case 'top-right': ctx.textAlign='right';ctx.textBaseline='top';x=previewCanvas.width-margin;y=margin;break;
+      case 'left': ctx.textAlign='left';x=margin;y=previewCanvas.height/2;break;
+      case 'right': ctx.textAlign='right';x=previewCanvas.width-margin;y=previewCanvas.height/2;break;
+      case 'bottom-left': ctx.textAlign='left';ctx.textBaseline='bottom';x=margin;y=previewCanvas.height-margin;break;
+      case 'bottom': ctx.textBaseline='bottom';x=previewCanvas.width/2;y=previewCanvas.height-margin;break;
+      case 'bottom-right': ctx.textAlign='right';ctx.textBaseline='bottom';x=previewCanvas.width-margin;y=previewCanvas.height-margin;break;
+    }
+    ctx.fillText(watermarkText.value, x, y);
+    ctx.globalAlpha = 1;
+  }
+
+  downloadButton.addEventListener('click', () => {
+    if (!uploadedImage) return;
+    const link = document.createElement('a');
+    link.download = 'watermarked-image.png';
+    link.href = previewCanvas.toDataURL('image/png');
+    link.click();
+  });
+});
+</script>
+</body>
+</html>
